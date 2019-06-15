@@ -44,7 +44,6 @@ def process_song_data(spark, input_data, output_data):
     
     # extract columns to create songs table
     songs_table = df["song_id", "title", "artist_id", "year", "duration"]
-    print("Songs table count is {}".format(songs_table.count()))
     
     # write songs table to parquet files partitioned by year and artist
     songs_table.write\
@@ -60,9 +59,6 @@ def process_song_data(spark, input_data, output_data):
                                   "artist_latitude as latitude", 
                                   "artist_longitude as longitude")
     dd_artists_table = artists_table.drop_duplicates()
-        
-    print("Pre-deduplicate artists count is  {}".format(artists_table.count()))
-    print("Post-deduplicate artists count is {}".format(dd_artists_table.count()))
     
     # write artists table to parquet files
     dd_artists_table.write\
@@ -90,14 +86,11 @@ def process_log_data(spark, input_data, output_data):
 
     # read log data file
     df = spark.read.json(os.path.join(input_data, log_data))
-    print("Total number of log rows is {}".format(df.count()))
     
     # filter by actions for song plays
     # update the ts value to be a timestamp
     df_songplays = df.filter(df.page=="NextSong")\
                     .withColumn('ts', (df.ts/1000).cast(dataType=TimestampType()))
-    
-    print("Total number of songplays rows is {}".format(df_songplays.count()))
 
     # user_id, first_name, last_name, gender, level
     # extract columns for users table    
@@ -111,24 +104,17 @@ def process_log_data(spark, input_data, output_data):
     
     # there are users that are on both the free and paid levels
     # filter out those duplicates marked as being on the free level
-    users_table.createOrReplaceTempView("tab_users")
-    duplicate_users = spark.sql("""
-        SELECT t1.user_id as user_id1,
-                'free' as level1
-        FROM tab_users t1 
-        JOIN tab_users t2
-        ON t1.user_id = t2.user_id
-        AND t1.level='free'
-        AND t2.level='paid'
-        """)
-    
+    tb = users_table.selectExpr("user_id as user_id1", "level as level1")
+    duplicate_users = users_table.join(tb, (~(users_table.level == tb.level1)) 
+                                   & (users_table.user_id == tb.user_id1) 
+                                   & (users_table.level==u'paid'))\
+                            .select("user_id1", "level1")
     dd_users_table = users_table.join(duplicate_users, 
                                 (users_table.user_id == duplicate_users.user_id1) 
                                 & (users_table.level == duplicate_users.level1), 
                                 how="left" )\
                 .filter(col("level1").isNull())\
                 .select("user_id", "first_name", "last_name", "gender", "level")
-    print("Total number of users rows is {}".format(dd_users_table.count()))
     
     # write users table to parquet files
     dd_users_table.write\
@@ -145,7 +131,6 @@ def process_log_data(spark, input_data, output_data):
                                      "year(ts) as year",
                                      "str_weekday as weekday")\
                             .distinct()
-    print("Total number of time rows is {}".format(time_table.count()))
     
     # write time table to parquet files partitioned by year and month
     time_table.write\
@@ -156,42 +141,32 @@ def process_log_data(spark, input_data, output_data):
      # read in the song data columns required to populate the songplays table
     df_songs = spark.read.parquet(os.path.join(output_data, song_table))\
                         .select("song_id", "title", "artist_id")
-    print("Total number of song rows is {}".format(df_songs.count()))
 
     # read in artist data to use for songplays table in case of duplicate song titles
     df_artists = spark.read.parquet(os.path.join(output_data, artist_table))\
-                            .select("artist_id", "name")
-    print("Total number of artist rows is {}".format(df_artists.count()))
+                        .selectExpr("artist_id as artist_id1", "name")
 
     # extract columns from joined song and log datasets to create songplays table 
-    df_songs.createOrReplaceTempView("tmp_songs")
-    df_artists.createOrReplaceTempView("tmp_artists")
-    df_songplays.createOrReplaceTempView("tmp_songplays")
-    songplays1 = spark.sql("""
-        SELECT sp.ts as start_time,
-                sp.userId as user_id, 
-                sp.level as level, 
-                sa.song_id as song_id, 
-                sa.artist_id as artist_id, 
-                sp.sessionId as session_id,
-                sp.location as location, 
-                sp.userAgent as user_agent
-        FROM tmp_songplays sp 
-        LEFT JOIN
-                (SELECT s.song_id, s.title, a.artist_id, a.name
-                FROM tmp_songs s
-                JOIN tmp_artists a
-                ON s.artist_id = a.artist_id) sa
-        ON sp.song = sa.title AND sp.artist = sa.name
-        """)
-        
+    df_songartists = df_songs.join(df_artists,
+                                   df_songs.artist_id == df_artists.artist_id1)\
+                            .select("song_id", "title", "artist_id", "name")
+    songplays1 = df_songplays.join(df_songartists,
+                                   (df_songplays.song == df_songartists.title) 
+                                   & (df_songplays.artist == df_songartists.name),
+                                   "left")\
+                            .selectExpr("ts as start_time",
+                                        "userId as user_id",
+                                        "level",
+                                        "song_id",
+                                        "artist_id",
+                                        "sessionId as session_id",
+                                        "location",
+                                        "userAgent as user_agent")
     songplays_table = songplays1.withColumn("songplay_id", monotonically_increasing_id())\
                                 .withColumn("year", date_format(songplays1.start_time, 'YYYY')\
                                             .cast(IntegerType()))\
                                 .withColumn("month", date_format(songplays1.start_time, 'M')\
-                                            .cast(IntegerType()))\
-
-    print("Total number of songplays rows is {}".format(songplays_table.count()))
+                                            .cast(IntegerType()))
     
     # write songplays table to parquet files partitioned by year and month
     songplays_table.write\
