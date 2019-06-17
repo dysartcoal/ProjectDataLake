@@ -51,5 +51,6 @@ It is expected that a solution could be sought to the problem with writing the s
 
 ## Conclusion
 
-Despite two issues, one resolved and one put on hold for the meantime, the ETL system successfully processed the input files and wrote the files to output for using as the basis for analysis of song play data.
+Despite two issues, one resolved and one put on hold for the meantime, the ETL system ran successfully on the AWS EMR cluster, processed the input files and wrote the files to output on S3 in parquet format for using as the basis for analysis of song play data.
+
 
