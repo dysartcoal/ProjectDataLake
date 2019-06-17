@@ -75,8 +75,7 @@ def process_log_data(spark, input_data, output_data):
     output_data (String): Location of output data
     """
     # get filepath to log data file
-    # log_data = "log_data/*/*/*.json"
-    log_data = "log_data/*.json"
+    log_data = "log_data/*/*/*.json"
     outpath_songplays = "songplays"
     outpath_users = "users"
     outpath_time = "time"
@@ -178,10 +177,8 @@ def process_log_data(spark, input_data, output_data):
 def main():
     """Configure the input and output locations and call the processing methods"""
     spark = create_spark_session()
-    #input_data = "s3a://udacity-dend/"
-    #output_data = "s3a://dysartcoal-dend-uswest2/analytics"
-    input_data = "data"
-    output_data = "analytics"
+    input_data = "s3a://udacity-dend/"
+    output_data = "s3a://dysartcoal-dend-uswest2/analytics"
     
     process_song_data(spark, input_data, output_data)    
     process_log_data(spark, input_data, output_data)
@@ -189,4 +186,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
