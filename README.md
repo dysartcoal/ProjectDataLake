@@ -1,9 +1,9 @@
 # Udacity DEND - Project 4: Spark Data Lake
 
 ## Background
-Sparkify want to be able to query their user data to get more information on the songs that are being played.  By combining the logs (which capture the user and their song play events) with the song database an analytics platform for song play analysis can be implemented.
+The background to this project is a ficititious music streaming company that want to be able to query their user data to get more information on the songs that are being played.  By combining the logs (which capture the user and their song play events) with the song database an analytics platform for song play analysis can be implemented.
 
-This etl workflow reads source song and log data from S3, processes the data into fact and dimension tables using Spark on the AWS EMR platform then writes the 5 output tables to S3 in parquet format which can then be used as the basis for analysis of the song play data.
+This ETL workflow reads source song and log data from S3, processes the data into fact and dimension tables using Spark on the AWS EMR platform then writes the 5 output tables to S3 in parquet format which can then be used as the basis for analysis of the song play data.
 
 
 ## Overall Workflow
@@ -18,7 +18,7 @@ The workflow was developed locally and then run in a Jupyter Notebook with a con
 6. The users and time tables are extracted from the log data.  Both tables have duplicates removed.
 7. The users table is written to parquet format on S3.
 8.  The time table is written to parquet format on S3 partitioned by year and month.
-9. The song and artist tables are read from the parquet format files 
+9. The song and artist tables are read from the parquet format files
 10. songs and artists data are joined to the log data to create the songplays table.
 11. The songplays table is written to parquet format on S3 partitioned by year and month.
 
@@ -54,3 +54,4 @@ It is expected that a solution could be sought to the problem with writing the s
 Despite two issues, one resolved and one put on hold for the meantime, the ETL system ran successfully on the AWS EMR cluster, processed the input files and wrote the files to output on S3 in parquet format for using as the basis for analysis of song play data.
 
 
+/
